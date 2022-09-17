@@ -1,6 +1,6 @@
-f8eb5513583bc67cb8e31911b33294b9 *DESCRIPTION
+f520966a161f2ab745cef00ab69dbf30 *DESCRIPTION
 b63a729bc529fb5b49f55da767dcf81c *NAMESPACE
-8eb2869a0a35a7d717bae829b6b55fab *NEWS.md
+e2738f24044ad8de3c9736dbf5be0ccd *NEWS.md
 a018cf989898b1b50cb5dae8ec46ff18 *R/MAVB_functions.R
 a5266b0003167c6229f822a922dc337d *R/RcppExports.R
 b4a40726c7e8fa18bc06a4b3717673a6 *R/aux_functions.R
@@ -12,7 +12,7 @@ ce90afa92a6ffd55770a69bf0ebfe8c2 *R/predict_functions.R
 97efebb15b1bf025f675341c590e844c *R/squarem_functions.R
 0b9d5d507f1080ace0737a122adc0538 *R/superlearner_functions.R
 a08f677966233c16c1b366170a2efe04 *R/vglmer_regression.R
-e3496d36670cf6c9e389a5ae435ceba4 *README.md
+202b5ef62a95f189986424bcb3deb550 *README.md
 cd6c35e1c137d8d18ee6032ab79997b5 *man/LinRegChol.Rd
 86a5fe9bb15e3f42051003645fd8d3a8 *man/MAVB.Rd
 abaddd32bb0ed0c05fc7fb5b3159aceb *man/custom_glmer_samples.Rd
@@ -30,7 +30,7 @@ de3fdfb84f3ee61f059bdd4171c1a504 *man/vglmer_control.Rd
 283a079e73bc7bfa77f1f414045d30b1 *man/vglmer_predict.Rd
 3c5547dc82e14ede4ddb6899bcc6b772 *src/RcppExports.cpp
 3a4b6b0677a36720e087d79415b53f54 *src/eigen_alpha.cpp
-7c95c4bcc9585705098c072d2fa05f93 *src/eigen_helpers.cpp
+6c591278142e4ff97ffcab5052382713 *src/eigen_helpers.cpp
 cfced4fe5503cce50301b8b576e5fb00 *src/eigen_linalg.cpp
 2098aab64ef1a6bda4e132033dea82db *src/eigen_px.cpp
 2ca464ed0d62c41a8b87f7c4b44806c2 *tests/testthat.R
