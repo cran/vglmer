@@ -1,3 +1,7 @@
+# vglmer 1.0.3
+
+* Adjust `vglmer` to not throw deprecation messages with Matrix 1.5. Thank you to Mikael Jagan for suggestions on how to adapt the code.
+
 # vglmer 1.0.2
 
 * IMPORTANT: Fixes bug where prediction with only one spline  (and no random effects) was wrong; the non-linear part of the spline was ignored.

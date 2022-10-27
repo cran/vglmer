@@ -5,9 +5,11 @@ safe_convert <- function(x){
     lout <- seq_len(length(out)) - 1
     out <- cbind(lout, lout, out)
     colnames(out) <- c('i', 'j', 'x')
-    # out <- with(attributes(as(as(as.matrix(x), "sparseMatrix"), "dgTMatrix")), cbind(i, j, x))
   }else{
-    out <- with(attributes(as(as(x, "sparseMatrix"), "dgTMatrix")), cbind(i, j, x))
+    if (inherits(x, 'matrix')){
+      x <- drop0(x)  
+    }
+    out <- with(attributes(as(as(x, "generalMatrix"), "TsparseMatrix")), cbind(i, j, x))
   }
   return(out)
 }
@@ -128,7 +130,7 @@ EM_prelim_logit <- function(X, Z, s, pg_b, iter, ridge = 2) {
 
   for (it in 1:iter) {
     EM_pg_c <- jointXZ %*% EM_beta
-    EM_pg_mean <- pg_b / (2 * EM_pg_c) * tanh(EM_pg_c / 2)
+    EM_pg_mean <- as.vector(pg_b / (2 * EM_pg_c) * tanh(EM_pg_c / 2))
     if (any(abs(EM_pg_c) < 1e-10)) {
       tiny_c <- which(abs(EM_pg_c) < 1e-10)
       EM_pg_mean[tiny_c] <- pg_b[tiny_c] / 4
