@@ -1,3 +1,15 @@
+# vglmer 1.0.5
+
+** Add gKRLS as an option for smoothing multiple (continuous) covariates. Chang and Goplerud (2024; https://doi.org/10.1017/pan.2023.27) for more details.
+
+# vglmer 1.0.4
+
+* Adjust `predict.vglmer` to allow for faster predictions on large datasets by not copying and filling in a large sparse matrix. Thank you to Michael Auslen for pointing out this issue.
+
+* Add the option for `terms` to `predict` to allow for predictions for each random effect separately
+
+* Address a bug where predictions with `NA` in new data.frame would fail for certain splines or for cases where `newdata` had a single row.
+
 # vglmer 1.0.3
 
 * Adjust `vglmer` to not throw deprecation messages with Matrix 1.5. Thank you to Mikael Jagan for suggestions on how to adapt the code.

@@ -11,6 +11,10 @@
 #'   expectation of the linear predictor. A positive integer draws
 #'   \code{samples} samples from the variational distributions and calculates
 #'   the linear predictor.
+#' @param type Default (\code{"link"}) returns the linear predictor;
+#'   \code{"terms"} returns the predicted value for each random effect (or
+#'   spline) separately as well as one that collects all fixed effects. At the
+#'   moment, other options are not enabled.
 #' @param samples_only Default (\code{FALSE}) returns the samples from the
 #'   variational distributions, \bold{not} the prediction. Each row is a sample and
 #'   each column is a parameter.
@@ -60,11 +64,14 @@
 #'   term of the prediction.
 #' @importFrom stats delete.response terms na.pass
 #' @export
-predict.vglmer <- function(object, newdata,
+predict.vglmer <- function(object, newdata, type = 'link',
                            samples = 0, samples_only = FALSE,
                            summary = TRUE, allow_missing_levels = FALSE, ...) {
   if (length(list(...)) > 0) {
     stop("... not used for predict.vglmer")
+  }
+  if (!(type %in% c('link', 'terms'))){
+    stop('vglmer only uses "terms" and "link" for "type" in predict.')
   }
   newdata <- as.data.frame(newdata)
   rownames(newdata) <- as.character(1:nrow(newdata))
@@ -177,8 +184,17 @@ predict.vglmer <- function(object, newdata,
       
       special_i <- parse_formula$smooth.spec[[i]]
       
-      all_splines_i <- vglmer_build_spline(x = newdata[[special_i$term]], 
+      if (special_i$type %in% c('gKRLS', 'randwalk')){
+        all_splines_i <- newdata[special_i$term]
+        special_i$fmt_term <- paste0('(', paste0(special_i$term, collapse=','), ')')
+      }else{
+        all_splines_i <- newdata[[special_i$term]]
+        special_i$fmt_term <- special_i$term
+      }
+      
+      all_splines_i <- vglmer_build_spline(x = all_splines_i, 
          knots = Z.spline.attr[[i]]$knots, 
+         xt = Z.spline.attr[[i]]$xt,
          Boundary.knots =  Z.spline.attr[[i]]$Boundary.knots,
          by = newdata[[Z.spline.attr[[i]]$by]], outer_okay = TRUE,
          type = Z.spline.attr[[i]]$type, override_warn = TRUE,
@@ -190,12 +206,12 @@ predict.vglmer <- function(object, newdata,
         
         stopifnot(spline_counter %in% 1:2)
         
-        colnames(spline_i$x) <- paste0('spline @ ', special_i$term, ' @ ', colnames(spline_i$x))
+        colnames(spline_i$x) <- paste0('spline @ ', special_i$fmt_term, ' @ ', colnames(spline_i$x))
         
         if (spline_counter > 1){
-          spline_name <- paste0('spline-',special_i$term,'-', i, '-int')
+          spline_name <- paste0('spline-',special_i$fmt_term,'-', i, '-int')
         }else{
-          spline_name <- paste0('spline-', special_i$term, '-', i, '-base')
+          spline_name <- paste0('spline-', special_i$fmt_term, '-', i, '-base')
         }
         
         Z.spline[[special_counter]] <- spline_i$x
@@ -221,7 +237,7 @@ predict.vglmer <- function(object, newdata,
     rownames(Z.spline) <- rownames(newdata)
     
     if (ncol(Z) > 0){
-      Z.spline <- Z.spline[match(rownames(Z), rownames(Z.spline)),]
+      Z.spline <- Z.spline[match(rownames(Z), rownames(Z.spline)),, drop = FALSE]
       Z <- drop0(cbind(Z, Z.spline))
     }else{
       Z <- Z.spline
@@ -260,31 +276,71 @@ predict.vglmer <- function(object, newdata,
     }
   }
 
+  # Select overlapping columns
   in_both <- intersect(fmt_names_Z, orig_Z_names)
-  recons_Z <- drop0(sparseMatrix(i = 1, j = 1, x = 0, dims = c(nrow(Z), length(orig_Z_names))))
-  colnames(recons_Z) <- orig_Z_names
-  rownames(recons_Z) <- rownames_Z
+  # Find the ones that are missing
+  missing_cols <- setdiff(orig_Z_names, in_both)
 
-  recons_Z[, match(in_both, orig_Z_names)] <- Z[, match(in_both, fmt_names_Z)]
-
+  recons_Z <- Z[, match(in_both, fmt_names_Z), drop = F]
+  if (length(missing_cols) > 0){
+    # Create a matrix of zeros to pad the missing columns
+    pad_zero <- sparseMatrix(i = 1, j = 1, x = 0, 
+                             dims = c(nrow(Z), length(missing_cols)))
+    colnames(pad_zero) <- missing_cols
+    # Combine and then reorder to be lined-up correctly
+    recons_Z <- cbind(recons_Z, pad_zero)
+  }
+  recons_Z <- recons_Z[, match(orig_Z_names, colnames(recons_Z)), drop = F]
+    
+  # Old method for prediction
+  # in_both <- intersect(fmt_names_Z, orig_Z_names)
+  # recons_Z <- drop0(sparseMatrix(i = 1, j = 1, x = 0, dims = c(nrow(Z), length(orig_Z_names))))
+  # colnames(recons_Z) <- orig_Z_names
+  # rownames(recons_Z) <- rownames_Z
+  # recons_Z[, match(in_both, orig_Z_names)] <- Z[, match(in_both, fmt_names_Z)]
+  
   # Check that the entirely missing columns match those not in the original
-  checksum_align <- setdiff(not_in_new_Z, sort(names(which(colSums(recons_Z != 0) == 0))))
+  checksum_align <- setdiff(not_in_new_Z,
+    sort(names(which(colSums(recons_Z != 0) == 0))))
   if (length(checksum_align) > 0) {
     stop("Alignment Error")
   }
-
-  Z <- recons_Z
-  rm(recons_Z)
   
+  Z <- recons_Z
+  rm(recons_Z); gc()
+
   ####
   
   total_obs <- rownames(newdata)
   obs_in_both <- intersect(rownames(X), rownames(Z))
 
-  XZ <- cbind(
-    X[match(obs_in_both, rownames(X)), , drop = F],
-    Z[match(obs_in_both, rownames(Z)), , drop = F]
-  )
+  if (type == 'terms'){
+    if (samples != 0){stop('"terms" only enabled for samples=0.')}
+    # Calculate the linear predictor separately for each random effect
+    # (and fixed effects) and report a matrix of those predictions.
+    
+    X <- X[match(obs_in_both, rownames(X)), , drop = F]
+    Z <- Z[match(obs_in_both, rownames(Z)), , drop = F]
+    lp_FE <- as.vector(X %*% object$beta$mean)
+    vi_alpha_mean <- object$alpha$mean
+    lp_terms <- lapply(object$internal_parameters$cyclical_pos, FUN=function(i){
+      as.vector(Z[,i,drop=F] %*% vi_alpha_mean[i,drop=F])
+    })
+    lp_terms <- do.call('cbind', lp_terms)
+    colnames(lp_terms) <- names(object$internal_parameters$names_of_RE)
+    lp_terms <- cbind('FE' = lp_FE, lp_terms)
+    lp_terms <- lp_terms[match(total_obs, obs_in_both), , drop = F]
+    gc()
+    return(lp_terms)
+    
+  }else{
+    XZ <- cbind(
+      X[match(obs_in_both, rownames(X)), , drop = F],
+      Z[match(obs_in_both, rownames(Z)), , drop = F]
+    )
+  }
+  gc()
+  
   factorization_method <- object$control$factorization_method
   if (is.matrix(samples)) {
     if (ncol(samples) != ncol(XZ)) {
@@ -366,9 +422,14 @@ predict.vglmer <- function(object, newdata,
       lp <- lp[match(total_obs, obs_in_both), ]
       rownames(lp) <- NULL
     } else {
-      lp <- as.vector(t(apply(lp, MARGIN = 1, FUN = function(i) {
-        mean(i)
-      })))
+      
+      if (ncol(lp) != 1){
+        lp <- as.vector(lp)
+      }else{
+        lp <- as.vector(t(apply(lp, MARGIN = 1, FUN = function(i) {
+          mean(i)
+        })))
+      }
       lp <- lp[match(total_obs, obs_in_both)]
       rownames(lp) <- NULL
     }
